@@ -1,44 +1,43 @@
-# ==========================================
-# WebM Batch Converter - Makefile
-# ==========================================
-
 SHELL := /bin/bash
-CORES := $(shell nproc)
-JOBS := $(shell echo $$(( $(CORES) > 2 ? $(CORES) - 2 : 1 )))
+IMAGE_NAME=webm-converter
+CPUS=$(shell nproc)
 
-.PHONY: install chmod validate convert run clean help
-
-help:
-	@echo "Targets disponibles:"
-	@echo "  make install   -> Instala dependencias (Debian/Ubuntu)"
-	@echo "  make chmod     -> Da permisos a los scripts"
-	@echo "  make validate  -> Valida y mueve corruptos"
-	@echo "  make convert   -> Convierte WebM a MP4"
-	@echo "  make run       -> Ejecuta flujo completo"
-	@echo "  make clean     -> Elimina MP4 generados"
+.PHONY: install clean run check convert docker-build docker-run
 
 install:
 	sudo apt update
-	sudo apt install -y ffmpeg parallel
+	sudo apt install -y ffmpeg parallel make
 
-chmod:
-	chmod +x validate_and_move_corrupt.sh
-	chmod +x convert.sh
-
-validate:
-	./validate_and_move_corrupt.sh
+check:
+	mkdir -p corruptos
+	shopt -s nullglob; \
+	for f in *.webm; do \
+		if ! ffmpeg -v error -i "$$f" -f null - 2>/dev/null; then \
+			echo "Moviendo corrupto: $$f"; \
+			mv "$$f" corruptos/; \
+		fi; \
+	done
 
 convert:
-	@if ls *.webm 1> /dev/null 2>&1; then \
-		parallel -j $(JOBS) \
-		  'ffmpeg -y -threads 1 -i {} -c:v libx264 -preset fast -c:a aac {.}.mp4' \
-		  ::: *.webm; \
-	else \
-		echo "No hay archivos .webm para convertir."; \
-	fi
+	shopt -s nullglob; \
+	files=(*.webm); \
+	if [ $${#files[@]} -eq 0 ]; then \
+		echo "No hay archivos .webm para convertir"; \
+		exit 0; \
+	fi; \
+	parallel -j $(CPUS) 'ffmpeg -threads 1 -i {} -c:v libx264 -preset fast -c:a aac {.}.mp4' ::: *.webm
 
-run: chmod validate convert
-	@echo "Proceso completo finalizado."
+run: check convert
+
+docker-build:
+	docker build -t $(IMAGE_NAME) .
+
+docker-run:
+	docker run --rm \
+		-v $(PWD):/app \
+		--cpus="$(CPUS)" \
+		$(IMAGE_NAME) \
+		make run
 
 clean:
 	rm -f *.mp4
