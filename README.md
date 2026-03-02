@@ -16,20 +16,9 @@ Script profesional para:
 Instalación en Debian/Ubuntu:
 
 ```bash
-sudo apt install ffmpeg parallel
+
 🚀 Uso
-1️⃣ Validar archivos
-chmod +x validate_and_move_corrupt.sh
-./validate_and_move_corrupt.sh
-
-Esto moverá archivos corruptos a:
-
-./corruptos
-2️⃣ Convertir archivos válidos
-chmod +x convert.sh
-./convert.sh
-
-Convierte todos los .webm restantes a .mp4.
+Solo ejecuta make install y make run en tu terminal, se instalarán dependencias, concedera permisos de ejecución a los archivos y ejecutarán los mismos para convertir todos tus archivos webm a mp4
 
 ⚙ Configuración
 
